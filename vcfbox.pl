@@ -13,6 +13,7 @@ sub master {
 	my $cmd = shift(@ARGV);
 	my %modules = (summary    => \&summary,
 				   recall     => \&recall,
+				   allele     => \&allele,
 				   genomatch  => \&genomatch,
 				   sitefilt   => \&sitefilt,
 				   taxafilt   => \&taxafilt,
@@ -34,6 +35,9 @@ Usage: vcfbox.pl <module> [arguments]\n
 [Modules]
 summary   : summarize variant types
 recall    : recall genotypes based on read counts of alleles
+            -vcf needs to have depth data for each taxa
+allele    : convert genotyping to read counts of alleles for each taxon
+            - vcf needs to have depth data for each taxa
 genomatch : filter sites that have unmatched geno for select taxa
 sitefilt  : filter markers\/sites based on #makers, rates of missing,
             homozygosity, and heterozygosity
@@ -1041,4 +1045,79 @@ sub select {
 	close IN;
 }
 
+#########################################################################
+# usage
+#########################################################################
+sub allele {
+	my %opts = ();
+	&getopts('m:', \%opts);
+	
+	my $missing_str = (defined $opts{m}) ? $opts{m} : 0;
+
+	die(qq/
+	Usage: $0 allele [options] <vcf> 
+	[arguments]
+	-m: string to represent missing data (0) 
+	\n/) if (@ARGV==0 && -t STDIN);
+
+	my $vcf = $ARGV[0];
+	my $output;
+	if (!defined $opts{o}) {
+		$output = $vcf;
+		$output =~ s/.vcf//g;
+		$output .= ".allele.vcf";
+	}
+
+	open(OUT, ">", $output) || die;
+
+	# open the vcf file:
+	open(IN, "<", $vcf) || die;
+	while (<IN>) {
+		if (!/\#\#/) {
+			my %fd = (); # initiate fd, format-depristo
+			my @t = split;
+   			if (/^\#CHROM/) {
+				print OUT "CHR\t";
+				print OUT join("\t", @t[1,3,4,5]);
+				for (my $i=9; $i<= $#t; $i++) {
+					printf OUT "\t%s%s\t%s%s", $t[$i], "_REF", $t[$i], "_ALT";
+				}
+				print OUT "\n";
+				next;
+			}
+			next if ($t[4] eq '.'); # skip non-var sites
+ 	  		next if ($t[3] eq 'N'); # skip sites with unknown ref ('N')
+		
+			print OUT join("\t", @t[0, 1, 3, 4, 5]);
+
+			my @format = split(/:/, $t[8]); # format column
+			for (my $k = 9; $k <= $#t; $k++) {
+				my @depristo = split(/:/, $t[$k]);
+				for (my $i=0; $i<=$#format; $i++) {
+					if (!exists $depristo[$i]) {
+						$depristo[$i] = "NA";
+					}
+					$fd{$format[$i]} = $depristo[$i];
+				}
+				if (exists $fd{AD}) {
+					my @ad = split(/,/, $fd{AD}); # allele depth
+					my $refc = $missing_str;
+					my $altc = $missing_str;
+					if ($#ad == 1) {
+						$refc = $ad[0]; # ref count
+						$altc = $ad[1]; # alt count
+					}
+					print OUT "\t$refc\t$altc";
+				} else {
+					print STDERR "ERROR:";
+					print STDERR "$_\n";
+					print STDERR "No AD data, AD=allele depth\n";
+					exit;
+				}
+			}
+			print OUT "\n";
+		}
+	}
+	close IN;
+}
 
