@@ -189,6 +189,8 @@ sub genomatch {
 		$output = $vcf;
 		$output =~ s/.vcf//g;
 		$output .= ".genomatch.vcf";
+	} else {
+		$output = $opts{o};
 	}
 	open(OUT, ">", $output) || die;
 
@@ -294,7 +296,7 @@ sub genomatch {
 #########################################################################
 sub recall {
 	my %opts = ();
-	&getopts('Aa:Bb:s:m:o:', \%opts);
+	&getopts('A:a:B:b:s:m:o:', \%opts);
 	my $homoMinAD = (defined $opts{A}) ? $opts{A} : 4;
 	my $homoMinADperc = (defined $opts{a}) ? $opts{a} : 0.9;
 	my $heteroMinAD = (defined $opts{B}) ? $opts{B} : 1;
@@ -333,8 +335,9 @@ sub recall {
 		$output = $vcf;
 		$output =~ s/.vcf//g;
 		$output .= ".recall.vcf";
+	} else {
+		$output = $opts{o};
 	}
-	
 	# output
 	open(OUT, ">", $output) || die;
 
@@ -530,7 +533,7 @@ Usage: vcfbox.pl recode [options] <vcf>
 ######################################################################### 
 sub sitefilt {
 	my %opts = ();
-	&getopts('v:m:Pp:Hh:o:', \%opts);
+	&getopts('v:m:P:p:H:h:o:', \%opts);
 	my $minValid = (defined $opts{v}) ? $opts{v} : 1;
 	if ($minValid < 1) {
 		print STDERR "-v must be >0\n";
@@ -562,6 +565,8 @@ sub sitefilt {
 		$output = $vcf;
 		$output =~ s/.vcf//g;
 		$output .= ".sitefilt.vcf";
+	} else {
+		$output = $opts{o};
 	}
 	
 	open(OUT, ">", $output) || die;
@@ -1066,6 +1071,8 @@ sub allele {
 		$output = $vcf;
 		$output =~ s/.vcf//g;
 		$output .= ".allele.vcf";
+	} else {
+		$output = $opts{o};
 	}
 
 	open(OUT, ">", $output) || die;
